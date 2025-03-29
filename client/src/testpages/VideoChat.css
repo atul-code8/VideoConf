@@ -1,0 +1,201 @@
+.video-chat-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-color: #1a1a1a;
+    color: white;
+    font-family: 'Arial', sans-serif;
+  }
+  
+  .controls {
+    padding: 1rem;
+    background: #2d2d2d;
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+  }
+  
+  .controls input {
+    padding: 0.5rem;
+    border: 1px solid #4a4a4a;
+    border-radius: 4px;
+    background: #333;
+    color: white;
+    flex: 1;
+  }
+  
+  .controls button {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    background: #4a90e2;
+    color: white;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  
+  .controls button:hover {
+    background: #357abd;
+  }
+  
+  .video-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 1rem;
+    padding: 1rem;
+    overflow-y: auto;
+  }
+  
+  .video-item {
+    position: relative;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+    aspect-ratio: 16/9;
+  }
+  
+  .video-item video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .local-participant video {
+    transform: scaleX(-1);
+  }
+  
+  .participant-info {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+  }
+  
+  .status-indicators {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.25rem;
+  }
+  
+  .connection-status {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    background: #4a4a4a;
+  }
+  
+  .connection-status.connected {
+    background: #28a745;
+  }
+  
+  .connection-status.connecting {
+    background: #ffc107;
+    color: #000;
+  }
+  
+  .media-indicator {
+    font-size: 0.9rem;
+  }
+  
+  .media-indicator.inactive {
+    opacity: 0.5;
+  }
+  
+  .participant-id {
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+
+  /* Additional CSS */
+.lobby-container {
+    max-width: 500px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background: #2d2d2d;
+    border-radius: 8px;
+    text-align: center;
+  }
+  
+  .lobby-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .button-group {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    color: #000;
+  }
+  
+  .share-section {
+    margin-top: 1rem;
+    color: #000;
+  }
+  
+  .room-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: #2d2d2d;
+  }
+  
+  .video-placeholder {
+    width: 100%;
+    height: 100%;
+    background: #3a3a3a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .user-initial {
+    font-size: 3rem;
+    font-weight: bold;
+    color: #fff;
+  }
+  
+  .speaking {
+    box-shadow: 0 0 10px 2px #4a90e2;
+  }
+  
+  .speaking-indicator {
+    margin-left: 0.5rem;
+    animation: pulse 1s infinite;
+  }
+  
+  .mute-status {
+    margin-right: 0.5rem;
+  }
+  
+  .mute-status.muted {
+    color: #dc3545;
+  }
+  
+  @keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+  }
+  
+  @media (max-width: 768px) {
+    .video-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .controls {
+      position: static;
+    }
+  }
+
+
