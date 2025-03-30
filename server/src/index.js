@@ -59,7 +59,7 @@ let users = [];
 let meetings = [];
 
 // Middleware
-app.use(cors({ origin: "http://localhost:5173" }));
+app.use(cors({ origin: process.env.CLIENT_URL }));
 app.use(express.json());
 
 // Routes
