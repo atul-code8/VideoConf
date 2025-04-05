@@ -87,9 +87,9 @@ app.post("/api/meetings", (req, res) => {
 // WebSocket Logic
 io.use((socket, next) => {
   const token = socket.handshake.auth.token;
-  if (!token) return next(new Error('Authentication error'));
+  if (!token) return next(new Error("Authentication error"));
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) return next(new Error('Authentication error'));
+    if (err) return next(new Error("Authentication error"));
     socket.userId = user.userId;
     next();
   });
@@ -131,6 +131,10 @@ io.on("connection", (socket) => {
     });
   });
 
+  socket.on("leave-meeting", (meetingId) => {
+    socket.to(meetingId).emit("user-left", socket.id, socket.data.user);
+  });
+
   socket.on("offer", ({ offer, to }) => {
     socket
       .to(to)
@@ -148,13 +152,11 @@ io.on("connection", (socket) => {
   });
 
   socket.on("send-message", ({ meetingId, message }) => {
-    socket
-      .to(meetingId)
-      .emit("new-message", {
-        userId: socket.userId,
-        message,
-        user: socket.data.user,
-      });
+    socket.to(meetingId).emit("new-message", {
+      userId: socket.userId,
+      message,
+      user: socket.data.user,
+    });
   });
 });
 

@@ -8,6 +8,7 @@ import {
   MessageSquareText,
   Mic,
   MicOff,
+  MonitorOff,
   ScreenShare,
   Send,
   Settings,
@@ -30,24 +31,7 @@ const Room = () => {
   const remoteVideosRef = useRef([]);
   const [copied, setCopied] = useState(false);
   const [newMessage, setNewMessage] = useState("");
-  const [chatMessages, setChatMessages] = useState([
-    {
-      id: 1,
-      text: "Hello! How are you today?",
-      sent: false,
-      time: "10:00 AM",
-      status: "seen",
-      user: "John Doe",
-    },
-    {
-      id: 2,
-      text: "I'm doing great! Thanks for asking.",
-      sent: true,
-      time: "10:05 AM",
-      status: "delivered",
-      user: "Jane Smith",
-    },
-  ]);
+  const [chatMessages, setChatMessages] = useState([]);
 
   const socket = useSocket();
 
@@ -61,7 +45,10 @@ const Room = () => {
   const [snackbarMessage, setSnackbarMessage] = useState("");
 
   const [isScreenShareOn, setIsScreenShareOn] = useState(false);
-  const [screenShareStream, setScreenShareStream] = useState(null);
+  const screenShareStreamRef = useRef(null);
+  const remoteUserRef = useRef(null);
+  const [isLandscape, setIsLandscape] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const showSnackbar = (type, message) => {
     setSnackbarType(type);
@@ -127,8 +114,100 @@ const Room = () => {
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((track) => track.stop());
       }
+      if (screenShareStreamRef.current) {
+        screenShareStreamRef.current
+          .getTracks()
+          .forEach((track) => track.stop());
+      }
     };
   }, []);
+
+  const toggleScreenShare = useCallback(async () => {
+    try {
+      if (!isScreenShareOn) {
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+        });
+        const screenVideoTrack = screenStream.getVideoTracks()[0];
+        const currentLocalStream = localStreamRef.current;
+        const audioTrack = currentLocalStream.getAudioTracks()[0];
+
+        // Stop current video track (camera)
+        currentLocalStream.getVideoTracks().forEach((track) => track.stop());
+
+        // Create new stream with screen video and existing audio
+        const newStream = new MediaStream([screenVideoTrack, audioTrack]);
+        localStreamRef.current = newStream;
+        localVideoRef.current.srcObject = newStream;
+
+        // Replace video tracks in all peers
+        Object.values(peersRef.current).forEach((peer) => {
+          const sender = peer
+            .getSenders()
+            .find((s) => s.track.kind === "video");
+          if (sender) {
+            sender.replaceTrack(screenVideoTrack);
+          }
+        });
+
+        // Handle browser stop sharing
+        screenVideoTrack.onended = () => {
+          toggleScreenShare();
+        };
+
+        screenShareStreamRef.current = screenStream;
+        setIsScreenShareOn(true);
+        setIsCameraOn(false); // Camera is replaced by screen share
+      } else {
+        // Stop screen sharing
+        screenShareStreamRef.current
+          .getTracks()
+          .forEach((track) => track.stop());
+
+        // Re-enable camera if needed
+        const currentLocalStream = localStreamRef.current;
+        const audioTrack = currentLocalStream.getAudioTracks()[0];
+        let newStream;
+
+        // if (isCameraOn) {
+        //   const cameraStream = await navigator.mediaDevices.getUserMedia({
+        //     video: true,
+        //   });
+        //   const cameraVideoTrack = cameraStream.getVideoTracks()[0];
+        //   newStream = new MediaStream([cameraVideoTrack, audioTrack]);
+        // } else {
+        //   newStream = new MediaStream([audioTrack]);
+        // }
+
+        const cameraStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+        });
+        const cameraVideoTrack = cameraStream.getVideoTracks()[0];
+        newStream = new MediaStream([cameraVideoTrack, audioTrack]);
+
+        localStreamRef.current = newStream;
+        localVideoRef.current.srcObject = newStream;
+
+        // Update peers with new video track
+        Object.values(peersRef.current).forEach((peer) => {
+          const sender = peer
+            .getSenders()
+            .find((s) => s.track.kind === "video");
+          if (sender) {
+            sender.replaceTrack(newStream.getVideoTracks()[0] || null);
+          }
+        });
+
+        screenShareStreamRef.current = null;
+        setIsScreenShareOn(false);
+        setIsCameraOn(true);
+      }
+    } catch (error) {
+      console.error("Screen share error:", error);
+      showSnackbar("error", "Failed to toggle screen sharing");
+      setIsScreenShareOn(false);
+    }
+  }, [isScreenShareOn, isCameraOn, peersRef.current]);
 
   const addParticipant = useCallback((userId, stream, user) => {
     setParticipants((prev) => {
@@ -253,9 +332,25 @@ const Room = () => {
   };
 
   const toggleCamera = async () => {
+    if (isScreenShareOn) {
+      showSnackbar("warning", "Cannot toggle camera during screen share");
+      return;
+    }
     const videoTrack = localStreamRef.current.getVideoTracks()[0];
-    videoTrack.enabled = !videoTrack.enabled;
-    setIsCameraOn(!isCameraOn);
+    if (videoTrack) {
+      videoTrack.enabled = !videoTrack.enabled;
+      setIsCameraOn(!isCameraOn);
+    } else if (!isCameraOn) {
+      // Recreate camera stream if needed
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const videoTrack = stream.getVideoTracks()[0];
+      const audioTrack = localStreamRef.current.getAudioTracks()[0];
+
+      const newStream = new MediaStream([videoTrack, audioTrack]);
+      localStreamRef.current = newStream;
+      localVideoRef.current.srcObject = newStream;
+      setIsCameraOn(true);
+    }
   };
 
   const toggleMicrophone = async () => {
@@ -266,8 +361,8 @@ const Room = () => {
 
   const handleLeave = () => {
     localStreamRef.current.getTracks().forEach((track) => track.stop());
-    socket.disconnect();
     Object.values(peersRef.current).forEach((peer) => peer.close());
+    socket.emit("leave-meeting", meetingId);
     setParticipants([]);
     navigate("/");
   };
@@ -324,6 +419,7 @@ const Room = () => {
       socket.emit("join-meeting", meetingId, userData);
     }
     socket.on("user-joined", (socketId, user) => {
+      remoteUserRef.current = { socketId, user };
       const peer = createPeer(socketId, user);
       peersRef.current[socketId] = peer;
       showSnackbar("success", `${user.name} joined the meeting`);
@@ -343,8 +439,25 @@ const Room = () => {
       handleIceCandidate(candidate, socketId);
     });
 
-    socket.on("new-message", ({ userId, message, user }) => {      
-      setChatMessages((prev) => [...prev, { ...message, user: user.name, sent: userId === socket.id }]);
+    socket.on("new-message", ({ userId, message, user }) => {
+      setChatMessages((prev) => [
+        ...prev,
+        { ...message, user: user.name, sent: userId === socket.id },
+      ]);
+      showSnackbar("info", `${user.name}: ${message.text}`);
+      setIsDrawerOpen(true);
+      setTimeout(() => {
+        setIsDrawerOpen(false);
+      }, 3000);
+    });
+
+    socket.on("user-left", (userId, user) => {
+      if (peersRef.current[userId]) {
+        peersRef.current[userId].close();
+        delete peersRef.current[userId];
+        setParticipants((prev) => prev.filter((p) => p.id !== userId));
+        showSnackbar("warning", `${user.name} left the meeting`);
+      }
     });
 
     socket.on("user-disconnected", (userId, user) => {
@@ -352,7 +465,7 @@ const Room = () => {
         peersRef.current[userId].close();
         delete peersRef.current[userId];
         setParticipants((prev) => prev.filter((p) => p.id !== userId));
-        showSnackbar("success", `${user.name} left the meeting`);
+        showSnackbar("warning", `${user.name} left the meeting`);
       }
     });
 
@@ -364,7 +477,6 @@ const Room = () => {
       socket.off("user-disconnected");
       Object.values(peersRef.current).forEach((peer) => peer.close());
       peersRef.current = {};
-      socket.disconnect();
     };
   }, []);
 
@@ -372,14 +484,14 @@ const Room = () => {
     <div className="w-full flex flex-col h-screen relative">
       {/* Message Drawer */}
       <div
-        className={`fixed top-0 left-0 w-96 z-10 h-screen bg-white transition-all duration-300 ease-in-out ${
+        className={`fixed top-0 left-0 w-full sm:w-96 z-10 h-screen bg-white transition-all duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="bg-white h-full flex flex-col">
           <div className="bg-blue-600 text-white h-12 px-4 flex items-center justify-between">
             <h2 className="text-xl font-semibold whitespace-nowrap">
-              React Chat App
+              In Meeting Chats
             </h2>
             <div className="flex gap-4">
               <button
@@ -458,25 +570,11 @@ const Room = () => {
       {/* Main Content */}
       <div
         className={`flex flex-col flex-1 transition-all duration-300 ease-in-out ${
-          isOpen ? "ml-96" : "ml-0"
+          isOpen ? "sm:ml-96" : "sm:ml-0"
         }`}
       >
         {/* Local Video */}
-        <div
-          style={{
-            position: "fixed",
-            bottom: "6rem",
-            right: "2rem",
-            maxWidth: "300px",
-            height: "200px",
-            backgroundColor: "#000",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            borderRadius: "8px",
-            boxShadow: "2px 2px 15px 5px rgba(0, 0, 0, 0.25)",
-          }}
-        >
+        <div className="fixed bottom-20 right-2 z-10 w-4/5 max-w-[254px] bg-black flex justify-center items-center rounded-[8px] shadow-lg shadow-black/30">
           <video
             ref={localVideoRef}
             autoPlay
@@ -490,9 +588,23 @@ const Room = () => {
             }}
           />
         </div>
+        {/* <div className="w-full h-full flex items-center justify-center">
+          <div className="w-24 h-24 bg-gray-600 rounded-full flex items-center justify-center">
+            <span className="text-white text-2xl">{userData?.name[0]}</span>
+          </div>
+        </div> */}
 
         {/* Participants */}
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 p-4">
+        {/* <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 p-4">
+          {participants.map((participant, index) => (
+            <Participant key={index} participant={participant} />
+          ))}
+        </div> */}
+        <div
+          className={`flex-1 overlflow-y-auto grid gap-4 p-4 ${
+            isLandscape ? "grid-cols-2" : "grid-cols-1"
+          }`}
+        >
           {participants.map((participant, index) => (
             <Participant key={index} participant={participant} />
           ))}
@@ -500,7 +612,7 @@ const Room = () => {
 
         {/* Actions */}
         <div
-          className={`bg-gray-200 px-4 py-2 flex items-center justify-between transition-all duration-300 ease-in-out ${
+          className={`sticky bottom-0 bg-gray-200 px-4 py-2 flex items-center justify-between transition-all duration-300 ease-in-out ${
             isOpen ? "left-96" : "left-0"
           }`}
         >
@@ -526,22 +638,40 @@ const Room = () => {
               className="rounded-full! p-4!"
             >
               {isMicrophoneOn ? (
-                <Mic className="w-6 h-6 text-gray-800 dark:text-white" />
+                <Mic className="w-6 h-6" />
               ) : (
-                <MicOff className="w-6 h-6 text-gray-800 dark:text-white" />
+                <MicOff className="w-6 h-6" />
               )}
             </button>
           </div>
           <div className="flex items-center gap-2">
+            <div className="relative flex">
+              <button
+                type="button"
+                className="rounded-full! p-4!"
+                onClick={toggleDrawer}
+              >
+                <MessageSquareText className="size-6" />
+              </button>
+              <span
+                className={`relative flex size-2 ${isDrawerOpen ? "" : "hidden"}`}
+              >
+                <span className="absolute top-2 -left-4 inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-75"></span>
+                <span className="relative top-2 -left-4 inline-flex size-2 rounded-full bg-sky-500"></span>
+              </span>
+            </div>
             <button
               type="button"
-              className="rounded-full! p-4!"
-              onClick={toggleDrawer}
+              className={`rounded-full! p-4! ${
+                isScreenShareOn ? "bg-red-400 text-gray-100" : ""
+              }`}
+              onClick={toggleScreenShare}
             >
-              <MessageSquareText className="size-6" />
-            </button>
-            <button type="button" className="rounded-full! p-4!">
-              <ScreenShare className="size-6" />
+              {isScreenShareOn ? (
+                <MonitorOff className="size-6" />
+              ) : (
+                <ScreenShare className="size-6" />
+              )}
             </button>
             <button
               type="button"
@@ -553,20 +683,20 @@ const Room = () => {
           </div>
           <button
             type="button"
-            className="bg-red-400 hover:bg-red-500 text-gray-100 border-none!"
+            className="bg-red-400 hover:bg-red-500 text-gray-100 border-none! hidden sm:block"
             onClick={handleLeave}
           >
-            Leave
+            <span className="">Leave</span>
           </button>
         </div>
 
         {/* Settings Drawer */}
         <div
-          className={`fixed top-0 right-0 w-96 h-full bg-gray-800 transform transition-transform duration-300 ease-in-out ${
+          className={`fixed top-0 right-0 w-full sm:w-96 h-full transform transition-transform duration-300 ease-in-out ${
             isSettingsOpen ? "translate-x-0" : "translate-x-full"
           } flex flex-col`}
         >
-          <div className="p-4 border-b flex items-center justify-between">
+          <div className="bg-blue-600 h-12 px-4 flex items-center justify-between">
             <h2 className="text-lg text-white font-medium">Settings</h2>
             <button
               type="button"
@@ -579,7 +709,7 @@ const Room = () => {
                 viewBox="0 0 24 24"
                 strokeWidth={1.5}
                 stroke="currentColor"
-                className="size-6"
+                className="size-6 stroke-2"
               >
                 <path
                   strokeLinecap="round"
@@ -608,6 +738,15 @@ const Room = () => {
               </button>
             </div>
           </div>
+          <div className="bg-gray-200 p-4 block sm:hidden">
+            <button
+              type="button"
+              className="bg-red-400 hover:bg-red-500 text-gray-100 border-none! w-full p-4"
+              onClick={handleLeave}
+            >
+              Leave Meeting
+            </button>
+          </div>
         </div>
       </div>
 
@@ -628,6 +767,20 @@ const Participant = ({ participant }) => {
     audio: false,
   });
 
+  const [inFocus, setInFocus] = useState(false);
+
+  const [isMuted, setIsMuted] = useState(false);
+
+  const [isSpeakerOn, setIsSpeakerOn] = useState(false);
+
+  const [isScreenShareOn, setIsScreenShareOn] = useState(false);
+
+  const [isVideoOn, setIsVideoOn] = useState(false);
+
+  const [isAudioOn, setIsAudioOn] = useState(false);
+
+  const [isPinned, setIsPinned] = useState(false);
+
   useEffect(() => {
     const stream = participant.stream;
     if (videoRef.current) {
@@ -637,6 +790,9 @@ const Participant = ({ participant }) => {
     const updateMediaStatus = () => {
       const videoTrack = stream.getVideoTracks()[0];
       const audioTrack = stream.getAudioTracks()[0];
+
+      // setIsVideoOn(videoTrack?.enabled);
+      // setIsAudioOn(audioTrack?.enabled);
 
       setMediaStatus({
         video: videoTrack?.enabled && videoTrack.readyState === "live",
@@ -671,14 +827,30 @@ const Participant = ({ participant }) => {
   }, [participant.stream]);
 
   return (
-    <div className="relative h-[300px] rounded-lg group">
+    <div
+      className={`relative rounded-lg group cursor-pointer border-2 border-gray-200`}
+      onClick={() => setInFocus(!inFocus)}
+    >
+      {videoRef.current && inFocus && (
+        <div className="absolute top-1 right-1 w-3 h-3 rounded-full border-2 border-white bg-green-500" />
+      )}
+      {/* {isVideoOn ? ( */}
       <video
         ref={videoRef}
         autoPlay
         playsInline
-        className="w-full h-[300px] object-cover rounded-lg"
+        className="w-full h-full object-cover rounded-lg"
       />
-      <div className="participant-info absolute top-2 left-2">
+      {/* ) : (
+         <div className="w-full h-full flex items-center justify-center">
+           <div className="w-24 h-24 bg-gray-600 rounded-full flex items-center justify-center">
+             <span className="text-white text-2xl">
+               {participant.user?.name[0]}
+             </span>
+           </div>
+         </div>
+       )} */}
+      <div className="absolute top-4 left-4">
         <div className="status-indicators">
           <span
             className={`media-indicator ${
@@ -696,8 +868,7 @@ const Participant = ({ participant }) => {
           </span>
         </div>
       </div>
-      <div className="participant-id absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-sm opacity-0 group-hover:opacity-100 transition-opacity">
-        {/* {participant.id} */}
+      <div className="absolute bottom-4 left-4 bg-[#333] text-white rounded-md participant-id px-4 py-2 text-sm capitalize">
         {participant.user && participant.user.name}
       </div>
     </div>

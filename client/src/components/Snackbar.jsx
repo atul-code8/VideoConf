@@ -1,10 +1,15 @@
-import React, { useEffect, useRef } from 'react';
-import { CheckCircleIcon, CircleAlert, XIcon } from 'lucide-react';
+import React, { useEffect, useRef } from "react";
+import {
+  BadgeInfo,
+  CheckCircleIcon,
+  CircleAlert,
+  XIcon,
+} from "lucide-react";
 
 const Snackbar = ({
   isOpen,
   message,
-  type = 'info',
+  type = "info",
   onClose,
   duration = 6000,
 }) => {
@@ -39,12 +44,14 @@ const Snackbar = ({
 
   const getIcon = () => {
     switch (type) {
-      case 'success':
+      case "success":
         return <CheckCircleIcon className="w-5 h-5 text-white" />;
-      case 'error':
+      case "error":
         return <CircleAlert className="w-5 h-5 text-white" />;
-    //   case 'warning':
-    //     return <WarningIcon className="w-5 h-5 text-white" />;
+      case "warning":
+        return <BadgeInfo className="w-5 h-5 text-white" />;
+      case "info":
+        return;
       default:
         return <XIcon className="w-5 h-5 text-white" />;
     }
@@ -52,20 +59,22 @@ const Snackbar = ({
 
   const getColor = () => {
     switch (type) {
-      case 'success':
-        return 'bg-green-500';
-      case 'error':
-        return 'bg-red-500';
-      case 'warning':
-        return 'bg-orange-500';
+      case "success":
+        return "bg-green-500 text-white";
+      case "error":
+        return "bg-red-500 text-white";
+      case "warning":
+        return "bg-orange-500 text-white";
+      case "info":
+        return "bg-gray-100 text-gray-800";
       default:
-        return 'bg-blue-500';
+        return "bg-blue-500 text-white";
     }
   };
 
   return (
     <div
-      className={`fixed bottom-20 left-1/2 -translate-x-1/2 min-w-[300px] max-w-[600px] flex items-center justify-between p-3 rounded-lg text-white shadow-lg z-50 ${getColor()} animate-slideIn`}
+      className={`fixed bottom-20 left-1/2 -translate-x-1/2 min-w-[300px] max-w-[600px] flex items-center justify-between p-3 rounded-lg shadow-lg z-50 ${getColor()} animate-slideIn`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       role="alert"

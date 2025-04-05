@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Video, UserPlus, Users, ArrowRight, Settings } from "lucide-react";
+import {
+  Video,
+  UserPlus,
+  Users,
+  ArrowRight,
+  Settings,
+  LoaderCircle,
+} from "lucide-react";
 import { useSocket } from "../context/websocket";
 
 const Lobby = () => {
@@ -13,12 +20,22 @@ const Lobby = () => {
   const [showJoinForm, setShowJoinForm] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [createdMeetingId, setCreatedMeetingId] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
 
   const socket = useSocket();
   const navigate = useNavigate();
 
   const handleCreateMeeting = (e) => {
     e.preventDefault();
+    setIsCreating(true);
+
+    if (!form.meetingTitle || !form.userName) {
+      alert("Please enter a meeting title and name.");
+      setIsCreating(false);
+      return;
+    }
+
     const newMeetingId = Math.random().toString(36).substring(2, 12);
     setCreatedMeetingId(newMeetingId);
 
@@ -27,6 +44,8 @@ const Lobby = () => {
     setTimeout(() => {
       navigate(`/meeting/${newMeetingId}`, { state: { name: form.userName } });
     }, 1000);
+
+    setIsCreating(false);
 
     // Request camera and microphone permission
     // navigator.mediaDevices
@@ -56,40 +75,44 @@ const Lobby = () => {
 
   const handleJoinMeeting = (e) => {
     e.preventDefault();
+    setIsJoining(true);
 
-    socket.emit("check-meeting-exists", meetingId);
+    // socket.emit("check-meeting-exists", meetingId);
 
-    socket.once("meeting-exists", (exists) => {
-      if (exists) {
-        setTimeout(() => {
-          navigate(`/meeting/${meetingId}`, { state: { name } });
-        }, 1000);
-      } else {
-        alert("The meeting does not exist.");
-      }
-    });
+    // socket.once("meeting-exists", (exists) => {
+    //   if (exists) {
+    //     setTimeout(() => {
+    //       navigate(`/meeting/${meetingId}`, { state: { name } });
+    //     }, 1000);
+    //   } else {
+    //     alert("The meeting does not exist.");
+    //   }
+    // });
 
     // Request camera and microphone permission
-    // navigator.mediaDevices
-    //   .getUserMedia({ video: true, audio: true })
-    //   .then(() => {
-    //     socket.emit("check-meeting-exists", meetingId);
+    navigator.mediaDevices
+      .getUserMedia({ video: true, audio: true })
+      .then(() => {
+        socket.emit("check-meeting-exists", meetingId);
 
-    //     socket.once("meeting-exists", (exists) => {
-    //       if (exists) {
-    //         setTimeout(() => {
-    //           navigate(`/meeting/${meetingId}`, { state: { name } });
-    //         }, 1000);
-    //       } else {
-    //         alert("The meeting does not exist.");
-    //       }
-    //     });
-    //   })
-    //   .catch((err) => {
-    //     alert(
-    //       "Camera and microphone permissions are required to join the meeting."
-    //     );
-    //   });
+        socket.once("meeting-exists", (exists) => {
+          if (exists) {
+            setTimeout(() => {
+              navigate(`/meeting/${meetingId}`, { state: { name } });
+            }, 1000);
+          } else {
+            alert("The meeting does not exist.");
+          }
+        });
+      })
+      .catch((err) => {
+        alert(
+          "Camera and microphone permissions are required to join the meeting."
+        );
+      })
+      .finally(() => {
+        setIsJoining(false);
+      });
   };
 
   return (
@@ -186,9 +209,15 @@ const Lobby = () => {
                   </div>
                   <button
                     type="submit"
-                    className="w-full bg-indigo-600 text-white rounded-xl px-6 py-3 hover:bg-indigo-700 transition-colors mt-6"
+                    className="w-full inline-flex items-center justify-center bg-indigo-600 text-white rounded-xl px-6 py-3 hover:bg-indigo-700 transition-colors mt-6"
+                    disabled={isCreating}
                   >
-                    Start Meeting Now
+                    {!isCreating ? "Create Meeting" : "Creating..."}
+                    {isCreating && (
+                      <span className="ml-2">
+                        <LoaderCircle className="animate-spin text-white" />
+                      </span>
+                    )}
                   </button>
                 </form>
               )}
@@ -248,9 +277,15 @@ const Lobby = () => {
                   </div>
                   <button
                     type="submit"
-                    className="w-full bg-purple-600 text-white rounded-xl px-6 py-3 hover:bg-purple-700 transition-colors mt-6"
+                    className="w-full flex items-center justify-center bg-purple-600 text-white rounded-xl px-6 py-3 hover:bg-purple-700 transition-colors mt-6"
+                    disabled={isJoining}
                   >
-                    Join Meeting
+                    {!isJoining ? "Join Meeting" : "Joining..."}
+                    {isJoining && (
+                      <span className="ml-2">
+                        <LoaderCircle className="animate-spin text-white" />
+                      </span>
+                    )}
                   </button>
                 </form>
               )}
