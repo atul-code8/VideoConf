@@ -106,9 +106,10 @@ const LandingPage = () => {
                 <div className="flex flex-wrap gap-4">
                   <button
                     className="bg-white text-blue-600 px-8 py-4 rounded-lg font-semibold flex items-center gap-2 hover:bg-blue-50 transition shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                    onClick={() => {
-                      user ? navigate("/meeting") : navigate("/login");
-                    }}
+                    // onClick={() => {
+                    //   user ? navigate("/meeting") : navigate("/login");
+                    // }}
+                    onClick={() => navigate("/meeting")}
                   >
                     Get Started <ArrowRight size={20} />
                   </button>

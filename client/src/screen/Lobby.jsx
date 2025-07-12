@@ -26,93 +26,93 @@ const Lobby = () => {
   const socket = useSocket();
   const navigate = useNavigate();
 
-  const handleCreateMeeting = (e) => {
+  const handleCreateMeeting = async (e) => {
     e.preventDefault();
     setIsCreating(true);
 
-    if (!form.meetingTitle || !form.userName) {
-      alert("Please enter a meeting title and name.");
+    try {
+      // Form validation
+      if (!form.userName.trim()) {
+        throw new Error("Please enter your name to create a meeting.");
+      }
+
+      // Request media permissions early to ensure a smooth experience
+      await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+
+      // Generate meeting ID
+      const newMeetingId = Math.random().toString(36).substring(2, 12);
+      setCreatedMeetingId(newMeetingId);
+
+      // Create meeting with socket
+      socket.emit("create-meeting", newMeetingId, form.meetingTitle.trim() || "Meeting");
+
+      // Wait for server acknowledgment
+      await new Promise((resolve, reject) => {
+        socket.once("meeting-created", resolve);
+        socket.once("meeting-error", reject);
+        // Timeout after 5 seconds
+        setTimeout(() => reject(new Error("Server timeout. Please try again.")), 5000);
+      });
+
+      // Navigate to meeting room
+      navigate(`/meeting/${newMeetingId}`, { state: { name: form.userName.trim() } });
+    } catch (error) {
+      let errorMessage = "Failed to create meeting. ";
+      if (error.name === "NotAllowedError" || error.name === "NotFoundError") {
+        errorMessage += "Camera and microphone permissions are required.";
+      } else {
+        errorMessage += error.message || "Please try again.";
+      }
+      alert(errorMessage);
+    } finally {
       setIsCreating(false);
-      return;
     }
-
-    const newMeetingId = Math.random().toString(36).substring(2, 12);
-    setCreatedMeetingId(newMeetingId);
-
-    socket.emit("create-meeting", newMeetingId, form.meetingTitle || "Meeting");
-
-    setTimeout(() => {
-      navigate(`/meeting/${newMeetingId}`, { state: { name: form.userName } });
-    }, 1000);
-
-    setIsCreating(false);
-
-    // Request camera and microphone permission
-    // navigator.mediaDevices
-    //   .getUserMedia({ video: true, audio: true })
-    //   .then(() => {
-    //     const newMeetingId = Math.random().toString(36).substring(2, 12);
-    //     setCreatedMeetingId(newMeetingId);
-
-    //     socket.emit(
-    //       "create-meeting",
-    //       newMeetingId,
-    //       form.meetingTitle || "Meeting"
-    //     );
-
-    //     setTimeout(() => {
-    //       navigate(`/meeting/${newMeetingId}`, {
-    //         state: { name: form.userName },
-    //       });
-    //     }, 1000);
-    //   })
-    //   .catch((err) => {
-    //     alert(
-    //       "Camera and microphone permissions are required to start the meeting."
-    //     );
-    //   });
   };
 
-  const handleJoinMeeting = (e) => {
+  const handleJoinMeeting = async (e) => {
     e.preventDefault();
     setIsJoining(true);
 
-    // socket.emit("check-meeting-exists", meetingId);
+    try {
+      // Form validation
+      if (!meetingId.trim()) {
+        throw new Error("Please enter a meeting ID.");
+      }
+      if (!name.trim()) {
+        throw new Error("Please enter your name.");
+      }
 
-    // socket.once("meeting-exists", (exists) => {
-    //   if (exists) {
-    //     setTimeout(() => {
-    //       navigate(`/meeting/${meetingId}`, { state: { name } });
-    //     }, 1000);
-    //   } else {
-    //     alert("The meeting does not exist.");
-    //   }
-    // });
+      // Request media permissions
+      await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
 
-    // Request camera and microphone permission
-    navigator.mediaDevices
-      .getUserMedia({ video: true, audio: true })
-      .then(() => {
-        socket.emit("check-meeting-exists", meetingId);
+      // Check if meeting exists
+      socket.emit("check-meeting-exists", meetingId.trim());
 
-        socket.once("meeting-exists", (exists) => {
-          if (exists) {
-            setTimeout(() => {
-              navigate(`/meeting/${meetingId}`, { state: { name } });
-            }, 1000);
-          } else {
-            alert("The meeting does not exist.");
-          }
-        });
-      })
-      .catch((err) => {
-        alert(
-          "Camera and microphone permissions are required to join the meeting."
-        );
-      })
-      .finally(() => {
-        setIsJoining(false);
+      // Wait for server response
+      const exists = await new Promise((resolve, reject) => {
+        socket.once("meeting-exists", resolve);
+        socket.once("meeting-error", reject);
+        // Timeout after 5 seconds
+        setTimeout(() => reject(new Error("Server timeout. Please try again.")), 5000);
       });
+
+      if (!exists) {
+        throw new Error("The meeting does not exist or has ended.");
+      }
+
+      // Navigate to meeting room
+      navigate(`/meeting/${meetingId.trim()}`, { state: { name: name.trim() } });
+    } catch (error) {
+      let errorMessage = "Failed to join meeting. ";
+      if (error.name === "NotAllowedError" || error.name === "NotFoundError") {
+        errorMessage += "Camera and microphone permissions are required.";
+      } else {
+        errorMessage += error.message || "Please try again.";
+      }
+      alert(errorMessage);
+    } finally {
+      setIsJoining(false);
+    }
   };
 
   return (
@@ -301,6 +301,6 @@ const Lobby = () => {
       </div>
     </div>
   );
-};
+}
 
 export default Lobby;

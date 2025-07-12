@@ -484,9 +484,8 @@ const Room = () => {
     <div className="w-full flex flex-col h-screen relative">
       {/* Message Drawer */}
       <div
-        className={`fixed top-0 left-0 w-full sm:w-96 z-10 h-screen bg-white transition-all duration-300 ease-in-out ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed top-0 left-0 w-full sm:w-96 z-10 h-screen bg-white transition-all duration-300 ease-in-out ${isOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
       >
         <div className="bg-white h-full flex flex-col">
           <div className="bg-blue-600 text-white h-12 px-4 flex items-center justify-between">
@@ -508,36 +507,32 @@ const Room = () => {
             {chatMessages.map((message, index) => (
               <div
                 key={index}
-                className={`flex flex-col mb-4 ${
-                  message.sent ? "items-end" : "items-start"
-                }`}
+                className={`flex flex-col mb-4 ${message.sent ? "items-end" : "items-start"
+                  }`}
               >
                 <div
                   className={`
               max-w-[80%] px-3 py-2 rounded-xl relative
-              ${
-                message.sent
-                  ? "bg-blue-600 text-white rounded-br-none"
-                  : "text-gray-800 rounded-bl-none"
-              }
+              ${message.sent
+                      ? "bg-blue-600 text-white rounded-br-none"
+                      : "text-gray-800 rounded-bl-none"
+                    }
             `}
                 >
                   <p className="break-words">{message.text}</p>
                   <div
-                    className={`${
-                      message.sent
+                    className={`${message.sent
                         ? "text-right text-gray-300"
                         : "text-left text-gray-400"
-                    } text-xs mt-1"`}
+                      } text-xs mt-1"`}
                   >
                     {message.user}
                   </div>
                 </div>
 
                 <div
-                  className={`text-[10px] mt-1 ${
-                    message.sent ? "text-blue-600" : "text-gray-500"
-                  }`}
+                  className={`text-[10px] mt-1 ${message.sent ? "text-blue-600" : "text-gray-500"
+                    }`}
                 >
                   {message.time}
                 </div>
@@ -567,11 +562,68 @@ const Room = () => {
         </div>
       </div>
 
+      {/* Settings Drawer */}
+      <div
+        className={`fixed top-0 right-0 w-full sm:w-96 h-full transform transition-transform duration-300 ease-in-out ${isSettingsOpen ? "translate-x-0" : "translate-x-full"
+          } flex flex-col`}
+      >
+        <div className="bg-blue-600 h-12 px-4 flex items-center justify-between">
+          <h2 className="text-lg text-white font-medium">Settings</h2>
+          <button
+            type="button"
+            onClick={() => setIsSettingsOpen(false)}
+            className="rounded-full! p-2! bg-transparent! text-gray-300"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+              className="size-6 stroke-2"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6 18 18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+        <div className="bg-gray-200 flex-1 p-4">
+          <p className="text-sm text-gray-600 mb-2">
+            Share this ID with participants to join the meeting
+          </p>
+          <div className="flex items-center justify-between gap-x-2 bg-gray-300 px-4 py-2 rounded-lg">
+            <code className="text-sm text-gray-500">{meetingId}</code>
+            <button
+              onClick={copyMeetingId}
+              className="text-indigo-600 hover:text-indigo-700 border-none! p-2!"
+              title="Copy meeting ID"
+            >
+              {copied ? (
+                <Check className="h-5 w-5" />
+              ) : (
+                <Copy className="h-5 w-5" />
+              )}
+            </button>
+          </div>
+          <div className="block sm:hidden mt-4">
+            <button
+              type="button"
+              className="bg-red-400 hover:bg-red-500 text-gray-100 border-none! w-full p-4"
+              onClick={handleLeave}
+            >
+              Leave Meeting
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Main Content */}
       <div
-        className={`flex flex-col flex-1 transition-all duration-300 ease-in-out ${
-          isOpen ? "sm:ml-96" : "sm:ml-0"
-        }`}
+        className={`flex flex-col flex-1 transition-all duration-300 ease-in-out ${isOpen ? "sm:ml-96" : "sm:ml-0"
+          }`}
       >
         {/* Local Video */}
         <div className="fixed bottom-20 right-2 z-10 w-4/5 max-w-[254px] bg-black flex justify-center items-center rounded-[8px] shadow-lg shadow-black/30">
@@ -588,22 +640,11 @@ const Room = () => {
             }}
           />
         </div>
-        {/* <div className="w-full h-full flex items-center justify-center">
-          <div className="w-24 h-24 bg-gray-600 rounded-full flex items-center justify-center">
-            <span className="text-white text-2xl">{userData?.name[0]}</span>
-          </div>
-        </div> */}
 
         {/* Participants */}
-        {/* <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 p-4">
-          {participants.map((participant, index) => (
-            <Participant key={index} participant={participant} />
-          ))}
-        </div> */}
         <div
-          className={`flex-1 overlflow-y-auto grid gap-4 p-4 ${
-            isLandscape ? "grid-cols-2" : "grid-cols-1"
-          }`}
+          className={`flex-1 overlflow-y-auto grid gap-4 p-4 ${isLandscape ? "grid-cols-2" : "grid-cols-1"
+            }`}
         >
           {participants.map((participant, index) => (
             <Participant key={index} participant={participant} />
@@ -612,9 +653,8 @@ const Room = () => {
 
         {/* Actions */}
         <div
-          className={`sticky bottom-0 bg-gray-200 px-4 py-2 flex items-center justify-between transition-all duration-300 ease-in-out ${
-            isOpen ? "left-96" : "left-0"
-          }`}
+          className={`sticky bottom-0 bg-gray-200 px-4 py-2 flex items-center justify-between transition-all duration-300 ease-in-out ${isOpen ? "left-96" : "left-0"
+            }`}
         >
           <div className="flex gap-2 justify-center">
             <button
@@ -662,9 +702,8 @@ const Room = () => {
             </div>
             <button
               type="button"
-              className={`rounded-full! p-4! ${
-                isScreenShareOn ? "bg-red-400 text-gray-100" : ""
-              }`}
+              className={`rounded-full! p-4! ${isScreenShareOn ? "bg-red-400 text-gray-100" : ""
+                }`}
               onClick={toggleScreenShare}
             >
               {isScreenShareOn ? (
@@ -688,65 +727,6 @@ const Room = () => {
           >
             <span className="">Leave</span>
           </button>
-        </div>
-
-        {/* Settings Drawer */}
-        <div
-          className={`fixed top-0 right-0 w-full sm:w-96 h-full transform transition-transform duration-300 ease-in-out ${
-            isSettingsOpen ? "translate-x-0" : "translate-x-full"
-          } flex flex-col`}
-        >
-          <div className="bg-blue-600 h-12 px-4 flex items-center justify-between">
-            <h2 className="text-lg text-white font-medium">Settings</h2>
-            <button
-              type="button"
-              onClick={() => setIsSettingsOpen(false)}
-              className="rounded-full! p-2! bg-transparent! text-gray-300"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-                className="size-6 stroke-2"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M6 18 18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-          <div className="bg-gray-200 flex-1 p-4">
-            <p className="text-sm text-gray-600 mb-2">
-              Share this ID with participants to join the meeting
-            </p>
-            <div className="flex items-center justify-between gap-x-2 bg-gray-300 px-4 py-2 rounded-lg">
-              <code className="text-sm text-gray-500">{meetingId}</code>
-              <button
-                onClick={copyMeetingId}
-                className="text-indigo-600 hover:text-indigo-700 border-none! p-2!"
-                title="Copy meeting ID"
-              >
-                {copied ? (
-                  <Check className="h-5 w-5" />
-                ) : (
-                  <Copy className="h-5 w-5" />
-                )}
-              </button>
-            </div>
-          </div>
-          <div className="bg-gray-200 p-4 block sm:hidden">
-            <button
-              type="button"
-              className="bg-red-400 hover:bg-red-500 text-gray-100 border-none! w-full p-4"
-              onClick={handleLeave}
-            >
-              Leave Meeting
-            </button>
-          </div>
         </div>
       </div>
 
@@ -853,16 +833,14 @@ const Participant = ({ participant }) => {
       <div className="absolute top-4 left-4">
         <div className="status-indicators">
           <span
-            className={`media-indicator ${
-              mediaStatus.video ? "active" : "inactive"
-            }`}
+            className={`media-indicator ${mediaStatus.video ? "active" : "inactive"
+              }`}
           >
             {mediaStatus.video ? "📹" : "📷❌"}
           </span>
           <span
-            className={`media-indicator ${
-              mediaStatus.audio ? "active" : "inactive"
-            }`}
+            className={`media-indicator ${mediaStatus.audio ? "active" : "inactive"
+              }`}
           >
             {mediaStatus.audio ? "🎤" : "🎤❌"}
           </span>

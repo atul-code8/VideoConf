@@ -6,7 +6,6 @@ const cors = require("cors");
 const { v4: uuid } = require("uuid");
 const { createServer } = require("http");
 const { Server } = require("socket.io");
-const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
 const app = express();
@@ -45,14 +44,14 @@ const createUserTable = async () => {
   console.log("User table created");
 };
 
-createUserTable();
-
-pool.connect((err) => {
-  if (err) {
-    console.error("Error connecting to the database:", err);
-  }
-  console.log("Connected to the database");
-});
+// pool.connect(async (err) => {
+//   if (err) {
+//     console.error("Error connecting to the database:", err);
+//     return;
+//   }
+//   console.log("Connected to the database");
+//   await createUserTable();
+// });
 
 // Mock database
 let users = [];
@@ -85,15 +84,15 @@ app.post("/api/meetings", (req, res) => {
 });
 
 // WebSocket Logic
-io.use((socket, next) => {
-  const token = socket.handshake.auth.token;
-  if (!token) return next(new Error("Authentication error"));
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) return next(new Error("Authentication error"));
-    socket.userId = user.userId;
-    next();
-  });
-});
+// io.use((socket, next) => {
+//   const token = socket.handshake.auth.token;
+//   if (!token) return next(new Error("Authentication error"));
+//   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+//     if (err) return next(new Error("Authentication error"));
+//     socket.userId = user.userId;
+//     next();
+//   });
+// });
 
 io.on("connection", (socket) => {
   socket.on("create-meeting", (meetingId, title) => {

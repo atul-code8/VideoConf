@@ -25,10 +25,10 @@ function App() {
           </>
         )}
 
-        <Route element={<ProtectedRoute />}>
+        {/* <Route element={<ProtectedRoute />}> */}
           <Route path="/meeting" element={<Lobby />} />
           <Route path="/meeting/:meetingId" element={<Room />} />
-        </Route>
+        {/* </Route> */}
 
         {/* <Route path="/:id" element={<MeetingPage />} /> */}
         {/* <Route path="/chat" element={<VideoChat />} /> */}
